@@ -19,6 +19,10 @@
   </style>
 </head>
 <body>
+
+<h1>Singapore Population Density Map</h1>
+<p>This map shows the population distribution across different subzones in Singapore. Darker areas indicate higher population densities.</p>
+
 <svg></svg>
 <div class="tooltip" style="opacity:0"></div>
 <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -48,7 +52,7 @@ Promise.all([d3.json("sgmap.json"), d3.csv("population2023.csv")]).then(data => 
 
   // Define color scale
   let colorScale = d3.scaleSequential(d3.interpolateBlues)
-      .domain([0, d3.max(mapData, d => d.popdata)]);
+      .domain([1000, d3.max(mapData, d => d.popdata)]);
 
   // Map and projection
   let projection = d3.geoMercator()
@@ -84,7 +88,14 @@ Promise.all([d3.json("sgmap.json"), d3.csv("population2023.csv")]).then(data => 
   // Add legend
   let legendWidth = 300, legendHeight = 20;
   let legend = svg.append("g")
-      .attr("transform", `translate(${width - legendWidth - 20}, ${height - 50})`);
+      .attr("transform", `translate(${width - legendWidth - 20}, ${height - 70})`);
+
+  // Legend title
+  legend.append("text")
+      .attr("x", 0)
+      .attr("y", -10)
+      .attr("class", "legend")
+      .text("Legend");
 
   let legendScale = d3.scaleLinear()
       .domain(colorScale.domain())
