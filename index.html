@@ -1,12 +1,26 @@
-
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <style></style>
+  <style>
+    .tooltip {
+      position: absolute;
+      background-color: white;
+      border: 1px solid black;
+      padding: 5px;
+      border-radius: 5px;
+      pointer-events: none;
+      font-size: 14px;
+    }
+    .legend {
+      font-size: 12px;
+      fill: black;
+    }
+  </style>
 </head>
 <body>
 <svg></svg>
+<div class="tooltip" style="opacity:0"></div>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 
 <script>
@@ -14,39 +28,98 @@
 let width = 1000, height = 600;
 
 let svg = d3.select("svg")
-    .attr("viewBox", "0 0 " + width + " " + height)
+    .attr("viewBox", "0 0 " + width + " " + height);
+
+let tooltip = d3.select(".tooltip");
 
 // Load external data and boot
 Promise.all([d3.json("sgmap.json"), d3.csv("population2023.csv")]).then(data => {
 
-let mapData = data[0].features;
-let popData = data[1];
+  let mapData = data[0].features;
+  let popData = data[1];
 
-// Merge pop data with map data
-mapData.forEach(d => {
-  let subzone = popData.find(e => e.Subzone.toUpperCase() == d.properties.Name);
-  d.popdata = (subzone != undefined) ? parseInt(subzone.Population) : 0;
-})
+  // Merge population data with map data
+  mapData.forEach(d => {
+    let subzone = popData.find(e => e.Subzone.toUpperCase() == d.properties.Name);
+    d.popdata = (subzone != undefined) ? parseInt(subzone.Population) : 0;
+  });
 
-console.log(mapData);
+  console.log(mapData);
 
-// Map and projection
-let projection = d3.geoMercator()
-    .center([103.851959, 1.290270])
-    .fitExtent([[20, 20], [980, 580]], data[0]);
+  // Define color scale
+  let colorScale = d3.scaleSequential(d3.interpolateBlues)
+      .domain([0, d3.max(mapData, d => d.popdata)]);
 
-let geopath = d3.geoPath().projection(projection);
+  // Map and projection
+  let projection = d3.geoMercator()
+      .center([103.851959, 1.290270])
+      .fitExtent([[20, 20], [980, 580]], data[0]);
 
-svg.append("g")
-    .attr("id", "districts")
-    .selectAll("path")
-    .data(mapData)
-    .enter()
-    .append("path")
-    .attr("d", geopath)
-    .attr("stroke", "black")
-    .attr("fill", "grey");
-})
+  let geopath = d3.geoPath().projection(projection);
+
+  // Draw map with color scale
+  svg.append("g")
+      .attr("id", "districts")
+      .selectAll("path")
+      .data(mapData)
+      .enter()
+      .append("path")
+      .attr("d", geopath)
+      .attr("stroke", "black")
+      .attr("fill", d => colorScale(d.popdata))
+      .on("mouseover", function(event, d) {
+          tooltip.style("opacity", 1)
+              .html(`Area: ${d.properties.Name}<br>Population: ${d.popdata}`);
+          d3.select(this).attr("stroke-width", 2);
+      })
+      .on("mousemove", function(event) {
+          tooltip.style("left", (event.pageX + 10) + "px")
+                 .style("top", (event.pageY - 28) + "px");
+      })
+      .on("mouseout", function() {
+          tooltip.style("opacity", 0);
+          d3.select(this).attr("stroke-width", 1);
+      });
+
+  // Add legend
+  let legendWidth = 300, legendHeight = 20;
+  let legend = svg.append("g")
+      .attr("transform", `translate(${width - legendWidth - 20}, ${height - 50})`);
+
+  let legendScale = d3.scaleLinear()
+      .domain(colorScale.domain())
+      .range([0, legendWidth]);
+
+  let legendAxis = d3.axisBottom(legendScale)
+      .ticks(5)
+      .tickFormat(d3.format(".0f"));
+
+  // Legend gradient
+  legend.append("defs")
+      .append("linearGradient")
+      .attr("id", "legend-gradient")
+      .selectAll("stop")
+      .data(colorScale.ticks(10).map((t, i, n) => ({
+          offset: `${100 * i / (n.length - 1)}%`,
+          color: colorScale(t)
+      })))
+      .enter().append("stop")
+      .attr("offset", d => d.offset)
+      .attr("stop-color", d => d.color);
+
+  // Add legend color bar
+  legend.append("rect")
+      .attr("width", legendWidth)
+      .attr("height", legendHeight)
+      .style("fill", "url(#legend-gradient)");
+
+  // Add legend axis
+  legend.append("g")
+      .attr("transform", `translate(0, ${legendHeight})`)
+      .call(legendAxis)
+      .attr("class", "legend");
+
+});
 
 </script>
 
