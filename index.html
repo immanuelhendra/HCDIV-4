@@ -69,7 +69,7 @@ Promise.all([d3.json("sgmap.json"), d3.csv("population2023.csv")]).then(data => 
       .enter()
       .append("path")
       .attr("d", geopath)
-      .attr("stroke", "black")
+      .attr("stroke", "white")
       .attr("fill", d => colorScale(d.popdata))
       .on("mouseover", function(event, d) {
           tooltip.style("opacity", 1)
